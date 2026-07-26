@@ -1,3 +1,6 @@
+#root
+.agents
+
 # dependencies
 node_modules
 .pnp
