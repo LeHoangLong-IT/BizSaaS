@@ -6,6 +6,15 @@
 }
 
 @theme inline {
+  --color-primary: #220C02;
+  --color-primary-light: #E3C9AD;
+  --color-secondary: #8B5742;
+  --color-surface-dark: #392A25;
+  --color-muted: #6A5750;
+  --color-surface-light: #E3D8D3;
+  --color-surface-hover: #D5C6BD;
+  --color-surface-bright: #F5EBE4;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);

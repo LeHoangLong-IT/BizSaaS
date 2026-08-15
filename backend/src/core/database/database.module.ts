@@ -6,16 +6,16 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 @Module({
   imports: [
     // Đây có thể là kết nối tới Master Database mặc định
-    // TypeOrmModule.forRoot({
-    //   type: 'mysql',
-    //   host: 'localhost',
-    //   port: 3306,
-    //   username: 'root',
-    //   password: '',
-    //   database: 'bizsaas_master',
-    //   autoLoadEntities: true,
-    //   synchronize: true,
-    // }),
+    TypeOrmModule.forRoot({
+      type: 'mysql',
+      host: 'localhost',
+      port: 3306,
+      username: 'root',
+      password: '',
+      database: 'bizsaas_master',
+      autoLoadEntities: true,
+      synchronize: true,
+    }),
   ],
   providers: [TenantConnectionProvider],
   exports: [TenantConnectionProvider],

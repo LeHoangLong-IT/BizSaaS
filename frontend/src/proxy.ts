@@ -19,8 +19,27 @@ export default function proxy(req: NextRequest) {
   // Phân tích Subdomain. Sử dụng biến môi trường hoặc mặc định là localhost:3000
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'localhost:3000';
   
-  // Nếu truy cập thẳng vào domain gốc (bizsaas.com) thì không rewrite (có thể render trang Landing page giới thiệu)
+  // Nếu truy cập thẳng vào domain gốc (bizsaas.com hoặc localhost:3000)
   if (hostname === rootDomain) {
+    const pathParts = url.pathname.split('/').filter(Boolean);
+    
+    // Nếu truy cập vào thư mục con (ví dụ: localhost:3000/coffee)
+    if (pathParts.length > 0) {
+      const potentialTenant = pathParts[0];
+      // Danh sách các trang public chung của hệ thống (Marketing Page)
+      const publicPages = ['about', 'pricing', 'login', 'register'];
+      
+      if (!publicPages.includes(potentialTenant)) {
+        // Tự động chuyển hướng (Redirect) sang chuẩn Subdomain
+        const protocol = req.headers.get('x-forwarded-proto') || 'http';
+        const remainingPath = '/' + pathParts.slice(1).join('/') + url.search;
+        
+        // Ví dụ: localhost:3000/coffee/admin?table=7 -> http://coffee.localhost:3000/admin?table=7
+        return NextResponse.redirect(`${protocol}://${potentialTenant}.${rootDomain}${remainingPath}`);
+      }
+    }
+    
+    // Nếu là trang chủ (/) hoặc các trang public hợp lệ thì cho qua
     return NextResponse.next();
   }
 

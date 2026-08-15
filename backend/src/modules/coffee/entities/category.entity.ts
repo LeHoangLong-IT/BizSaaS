@@ -9,6 +9,9 @@ export class Category {
   @Column()
   name: string;
 
+  @Column({ name: 'sort_order', default: 0 })
+  sortOrder: number;
+
   @OneToMany(() => Product, (product) => product.category)
   products: Product[];
 }

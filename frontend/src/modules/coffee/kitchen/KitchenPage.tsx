@@ -4,11 +4,23 @@ import { useEffect, useState } from 'react';
 import { io } from 'socket.io-client';
 import { Card, Button, notification } from 'antd';
 import { CheckCircleOutlined, BellOutlined } from '@ant-design/icons';
+import axios from 'axios';
 
 export default function KitchenPage() {
   const [orders, setOrders] = useState<any[]>([]);
 
   useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const res = await axios.get('http://localhost:3001/api/tenant/coffee/orders', { headers: { 'x-tenant-id': 'coffee' } });
+        const activeOrders = res.data.filter((o: any) => o.status === 'PENDING' || o.status === 'PREPARING');
+        setOrders(activeOrders);
+      } catch (err) {
+        console.error('Lỗi khi tải đơn hàng:', err);
+      }
+    };
+    fetchOrders();
+
     // Kết nối tới Socket.io Backend
     const socket = io('http://localhost:3001');
 
@@ -22,11 +34,14 @@ export default function KitchenPage() {
       
       // Bắn thông báo âm thanh / popup
       notification.success({
-        message: 'Có đơn hàng mới!',
+        title: 'Có đơn hàng mới!',
         description: `Bàn số ${orderData.table?.id || '?' } vừa gọi đồ.`,
         icon: <BellOutlined style={{ color: '#faad14' }} />,
-        placement: 'topRight',
       });
+    });
+
+    socket.on('orderStatusChanged', ({ orderId, status }) => {
+      fetchOrders();
     });
 
     return () => {
@@ -34,9 +49,14 @@ export default function KitchenPage() {
     };
   }, []);
 
-  const completeOrder = (orderId: number) => {
-    setOrders(orders.filter(o => o.id !== orderId));
-    notification.info({ message: `Đã hoàn thành Đơn #${orderId}` });
+  const completeOrder = async (orderId: number) => {
+    try {
+      await axios.put(`http://localhost:3001/api/tenant/coffee/orders/${orderId}/status`, { status: 'COMPLETED' }, { headers: { 'x-tenant-id': 'coffee' } });
+      setOrders(orders.filter(o => o.id !== orderId));
+      notification.info({ title: `Đã hoàn thành Đơn #${orderId}` });
+    } catch (err) {
+      notification.error({ title: 'Lỗi', description: 'Không thể cập nhật trạng thái đơn hàng' });
+    }
   };
 
   return (
@@ -57,18 +77,54 @@ export default function KitchenPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {orders.map((order) => (
-            <Card key={order.id} className="bg-gray-800 border-gray-700 text-white shadow-xl" headStyle={{ color: '#fbbf24', borderBottom: '1px solid #374151' }} title={`Đơn #${order.id} - Bàn ${order.table?.id || '?'}`}>
-              <div className="space-y-3 mb-6">
-                {/* Giả lập hiển thị item do backend tạm thời chưa populate nested relations trong lệnh create */}
-                <div className="p-3 bg-gray-700 rounded-lg">
-                  <span className="font-bold text-lg">1x Cà phê Sữa</span>
-                  <p className="text-sm text-gray-400 mt-1">- Thêm Trân châu</p>
-                </div>
+            <div key={order.id} className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden shadow-2xl flex flex-col">
+              <div className="bg-slate-800/80 border-b border-slate-700 px-5 py-4 flex justify-between items-center">
+                <h3 className="text-xl font-bold text-amber-400 m-0">Đơn #{order.id}</h3>
+                <span className="text-sm font-semibold text-slate-300 bg-slate-700 px-3 py-1 rounded-full">
+                  Bàn {order.table?.name || order.table?.id || 'Mang đi'}
+                </span>
               </div>
-              <Button type="primary" block size="large" icon={<CheckCircleOutlined />} className="bg-green-600 hover:bg-green-500 border-none" onClick={() => completeOrder(order.id)}>
-                Đã Pha Xong
-              </Button>
-            </Card>
+              
+              <div className="p-5 flex-1 flex flex-col">
+                <div className="space-y-3 mb-6 flex-1">
+                  {order.items?.map((item: any, idx: number) => {
+                    const [specs, customNote] = item.note ? item.note.split('|') : ['', ''];
+                    return (
+                      <div key={idx} className="p-4 bg-slate-700/50 rounded-lg border border-slate-600">
+                        <span className="font-bold text-lg text-white">{item.quantity}x {item.product?.name || 'Sản phẩm'}</span>
+                        <div className="text-sm text-slate-300 mt-2 space-y-1.5">
+                          {specs && (
+                            <div className="flex items-start gap-2">
+                              <span className="text-slate-400 font-semibold w-[70px] shrink-0">Tùy chọn:</span>
+                              <span>{specs.replace('Size: ', '').trim()}</span>
+                            </div>
+                          )}
+                          {item.toppings?.length > 0 && (
+                            <div className="flex items-start gap-2">
+                              <span className="text-slate-400 font-semibold w-[70px] shrink-0">Topping:</span>
+                              <span className="text-amber-300">{item.toppings.map((t: any) => t.name).join(', ')}</span>
+                            </div>
+                          )}
+                          {customNote && (
+                            <div className="flex items-start gap-2">
+                              <span className="text-slate-400 font-semibold w-[70px] shrink-0">Ghi chú:</span>
+                              <span className="text-rose-300 italic font-medium">"{customNote.trim()}"</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <button 
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-4 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-lg" 
+                  onClick={() => completeOrder(order.id)}
+                >
+                  <CheckCircleOutlined className="text-xl" />
+                  <span className="text-lg">Đã Pha Xong</span>
+                </button>
+              </div>
+            </div>
           ))}
         </div>
       )}

@@ -16,7 +16,7 @@ export default async function TenantHomePage({
     if (resolvedSearchParams.kds === 'true') {
       return <KitchenPage />;
     }
-    return <MenuPage tableId={resolvedSearchParams.table || '1'} />;
+    return <MenuPage tableId={resolvedSearchParams.table || '1'} tenantId={resolvedParams.tenantId} />;
   }
 
   return (
